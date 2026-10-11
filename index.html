@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tolerance Dose Trainer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: one centred column (max 680px), sticky tab bar, three panels: Cards / Quiz / Table. Isodose colour wash encodes dose size. */
+:root{
+  --bg:#eef2f5; --surface:#ffffff; --sunk:#e4eaef; --ink:#13202a; --muted:#566775; --line:#d3dce3;
+  --accent:#0d6a87; --accent-ink:#ffffff;
+  --hl:#fff04a; --hl-ink:#2e2a00;
+  --good:#1d7f47; --good-bg:#e2f3e9; --bad:#b9372a; --bad-bg:#fbe7e4;
+  --iso1:#3a6fd8; --iso2:#1fa3c0; --iso3:#35ad66; --iso4:#e2bd22; --iso5:#ee8526; --iso6:#de3f2e; --iso7:#b9399a;
+  --f-display:"Archivo",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b1319; --surface:#14202a; --sunk:#0f1a22; --ink:#e4ecf1; --muted:#8fa2b0; --line:#253541;
+    --accent:#56b8d8; --accent-ink:#06202b; --hl:#e9d63c; --hl-ink:#1f1b00;
+    --good:#53c486; --good-bg:#12301f; --bad:#ff7a69; --bad-bg:#3a1712;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b1319; --surface:#14202a; --sunk:#0f1a22; --ink:#e4ecf1; --muted:#8fa2b0; --line:#253541;
+  --accent:#56b8d8; --accent-ink:#06202b; --hl:#e9d63c; --hl-ink:#1f1b00;
+  --good:#53c486; --good-bg:#12301f; --bad:#ff7a69; --bad-bg:#3a1712;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5}
+.wrap{max-width:680px;margin:0 auto;padding-inline:16px;padding-block:20px 56px;display:flex;flex-direction:column;gap:16px}
+header{display:flex;flex-direction:column;gap:6px}
+.eyebrow{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(1.9rem,6vw,2.5rem);line-height:1.05;margin:0;text-wrap:balance;letter-spacing:-.01em}
+.wash{height:6px;border-radius:3px;background:linear-gradient(90deg,var(--iso1),var(--iso2),var(--iso3),var(--iso4),var(--iso5),var(--iso6),var(--iso7));margin-top:6px}
+.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.tabs button{font:700 .95rem var(--f-body);padding:10px 6px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.scopes{display:flex;flex-wrap:wrap;gap:6px}
+.scopes button{font:600 .85rem var(--f-body);padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.scopes button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}
+.swatch{width:12px;height:12px;border-radius:2px;background:var(--hl);display:inline-block}
+.controls{display:flex;flex-direction:column;gap:10px}
+.toggle{display:flex;gap:8px;align-items:center;font-size:.9rem;color:var(--muted);cursor:pointer}
+.toggle input{width:18px;height:18px;accent-color:var(--accent);margin:0;flex:none}
+.panel{display:flex;flex-direction:column;gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 20px;display:flex;flex-direction:column;gap:12px}
+.fc{min-height:250px;cursor:pointer}
+.fc .front{font-family:var(--f-display);font-weight:800;font-size:1.55rem;line-height:1.15;text-wrap:balance}
+.fc .front.long{font-size:1.2rem;font-weight:600;line-height:1.3}
+.prompt{color:var(--muted)}
+.answer{border-top:1px dashed var(--line);padding-top:14px;display:flex;flex-direction:column;gap:4px}
+.dose{font-family:var(--f-mono);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.big{font-size:2rem;display:flex;align-items:center;gap:10px;line-height:1.1}
+.big .dot{width:14px;height:14px}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;flex:none}
+.sub{color:var(--muted)}
+.timing{font-weight:700}
+.ansText{font-size:1.1rem}
+.badge{align-self:flex-start;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:var(--hl);color:var(--hl-ink);padding:2px 8px;border-radius:3px}
+.row{display:flex;gap:10px}
+.row > *{flex:1}
+.btn{font:700 1rem var(--f-body);padding:13px 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.good{background:var(--good);border-color:var(--good);color:var(--surface)}
+.btn.bad{border-color:var(--bad);color:var(--bad)}
+.meta{display:flex;justify-content:space-between;gap:10px;color:var(--muted);font-size:.85rem;flex-wrap:wrap}
+.bar{height:4px;background:var(--sunk);border-radius:2px;overflow:hidden}
+.bar > i{display:block;height:100%;background:var(--accent);transition:width .25s}
+.linkbtn{background:none;border:0;color:var(--accent);font:600 .85rem var(--f-body);cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:2px}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{text-align:left;font:600 1rem var(--f-body);padding:13px 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.opt.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.opt.right{background:var(--good-bg);border-color:var(--good);color:var(--ink)}
+.opt.wrong{background:var(--bad-bg);border-color:var(--bad);color:var(--ink)}
+.opt:disabled{cursor:default}
+.fb{font-weight:700}
+.fb.ok{color:var(--good)} .fb.no{color:var(--bad)}
+.why{color:var(--muted)}
+.qtext{font-family:var(--f-display);font-weight:600;font-size:1.3rem;line-height:1.25;text-wrap:balance;margin:0}
+.score{font-family:var(--f-display);font-weight:800;font-size:3rem;line-height:1}
+.missed{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+.lens{display:flex;flex-direction:column;gap:10px}
+.search{width:100%;font:1rem var(--f-body);padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.82rem;color:var(--muted);align-items:center}
+.chip{font:700 .72rem var(--f-mono);border:1px solid var(--line);border-radius:4px;padding:1px 5px;color:var(--ink);white-space:nowrap}
+.tip{background:var(--sunk);border-radius:10px;padding:12px 14px;font-size:.9rem}
+.site{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.site header{flex-direction:row;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.site h3{margin:0;font-family:var(--f-display);font-weight:800;font-size:1.15rem}
+.tol{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.tol .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.tol .dose{font-size:1.1rem}
+.tol .tn{font-size:.82rem;color:var(--muted)}
+.site ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.site li{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:baseline;padding:7px 0;border-top:1px solid var(--line)}
+.site li .eff{min-width:0}
+.site li .dcell{display:flex;align-items:center;gap:6px;justify-content:flex-end}
+.site li .dcell .fx{color:var(--muted);font-size:.85rem}
+.none{color:var(--muted);font-size:.9rem;border-top:1px solid var(--line);padding-top:7px}
+.mk{background:var(--hl);color:var(--hl-ink);padding:0 3px;border-radius:2px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+footer{color:var(--muted);font-size:.82rem}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Radiotherapy · BCU Section L, Appendix 3</span>
+    <h1>Tolerance &amp; reaction doses</h1>
+    <div class="wash" aria-hidden="true"></div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" id="tab-cards" data-tab="cards">Flashcards</button>
+    <button role="tab" id="tab-quiz" data-tab="quiz">Quiz</button>
+    <button role="tab" id="tab-table" data-tab="table">Table</button>
+  </nav>
+
+  <div class="controls" id="controls">
+  <div class="scopes" id="scopes" aria-label="What to revise">
+    <button data-scope="all">Everything</button>
+    <button data-scope="hl"><span class="swatch" aria-hidden="true"></span>Highlighted</button>
+    <button data-scope="tol">Tolerance doses</button>
+    <button data-scope="fx">Reaction doses</button>
+  </div>
+  <label class="toggle"><input type="checkbox" id="timing"> Include timing questions (acute, sub-acute, late)</label>
+  </div>
+
+  <section class="panel" id="p-cards"></section>
+  <section class="panel" id="p-quiz" hidden></section>
+  <section class="panel" id="p-table" hidden>
+    <input class="search" id="q" type="search" placeholder="Search organ or effect, e.g. lung, cataract" autocomplete="off">
+    <div class="legend">
+      <span><span class="chip">A</span> acute: during or within a few weeks</span>
+      <span><span class="chip">S</span> sub-acute: 2–6 months after</span>
+      <span><span class="chip">L</span> late: months to years after</span>
+    </div>
+    <div class="legend"><span class="dot" style="background:var(--iso1)"></span><span class="dot" style="background:var(--iso3)"></span><span class="dot" style="background:var(--iso5)"></span><span class="dot" style="background:var(--iso7)"></span> dot colour follows dose, low to high · <span class="mk">highlighted</span> = highlighted on the sheet</div>
+    <div class="tip">All doses assume 2Gy a day, 5 days a week, with moderate target volumes. So the number of fractions (#) is roughly half the dose in Gy. The tolerance dose is the <strong>minimum</strong> dose that will result in a significant complication within normal tissue.</div>
+    <div class="lens" id="sites"></div>
+  </section>
+
+  <footer>Transcribed from the BCU tolerance dose table (pp. 105–106). The printed sheet is the only version accepted in clinical assessments, so check anything that looks off against it.</footer>
+</div>
+
+<script>
+// [effect, timing, dose, fractions, highlighted]
+const D=[
+ {site:"Skin",tol:"55Gy",fx:[["Dry desquamation","A","50Gy","25",1],["Moist desquamation","A","60Gy","30",1],["Hair loss","A","20Gy","10"],["Atrophy, telangiectasia, fragility, induration, ulcer","L","55Gy","28"]]},
+ {site:"Eyes",tol:"5Gy",tn:"lens",qn:"lens of the eye",fx:[["Xerophthalmia","S,L","30Gy","30"],["Decreased visual activity, blindness","L","50Gy","25"],["Cataract","L","10Gy","5"]]},
+ {site:"Ears, tongue",tol:"60Gy",qn:"ears and tongue",fx:[["Otitis media","A","30Gy","15"],["Loss of taste","A,S","30Gy","15"],["Deafness","L","<60Gy","30"]]},
+ {site:"Mouth, salivary glands",tol:"60Gy",hl:1,qn:"mouth and salivary glands",fx:[["Decreased saliva","A,S","20Gy","10"],["Acute painful sialitis","A","10Gy","5"],["Painful mucositis","A","40Gy","20"],["Permanent xerostomia","L","50Gy","25"],["Mucosal ulcer, severe fibrosis","L","60Gy","30"]]},
+ {site:"Larynx",tol:"65Gy",fx:[["Persistent oedema, cartilage necrosis","S,L","65Gy","33"]]},
+ {site:"Lung",tol:"30Gy",tn:"45Gy partial volume",hl:1,xq:[{q:"Lung tolerance dose for a partial volume?",a:"45Gy",mono:1}],fx:[["Pneumonitis","S","20Gy","10"],["Pulmonary fibrosis","L","30Gy",""]]},
+ {site:"Heart",tol:"40Gy",hl:1,fx:[["Pancarditis, pericarditis","S","40Gy","20"],["Pericardial stricture/effusion, myocardiopathy","L","50Gy","25"]]},
+ {site:"Stomach and bowel",tol:"45Gy",hl:1,fx:[["Diarrhoea","A","20Gy","10"],["Proctitis with tenesmus","A","40Gy","20"],["Proctitis with bleeding","A","50Gy","25"],["Strictures, ulcers, perforation, fistulas","L","45Gy","23"]]},
+ {site:"Rectum",tol:"40Gy",tn:"60Gy limited volume",hl:1,xq:[{q:"Rectum tolerance dose for a limited volume?",a:"60Gy",mono:1}],fx:[]},
+ {site:"Oesophagus",tol:"45Gy",fx:[["Oesophagitis","A","30Gy","15"]]},
+ {site:"Liver",tol:"30Gy",fx:[["Hepatitis","S","25Gy","12"],["Liver failure, ascites","L","35Gy","18"]]},
+ {site:"Kidneys",tol:"40Gy",tn:"to 1/3 of each kidney",qn:"kidneys",xq:[{q:"The 40Gy kidney tolerance applies to how much of each kidney?",a:"1/3",opts:["1/3","1/2","2/3","The whole kidney"]}],fx:[["Nephritis","S","20Gy","10"],["Hypertension","S,L",">20Gy","10"]]},
+ {site:"Ureters",fx:[["Stricture with obstruction","L","75Gy","38"]]},
+ {site:"Bladder",tol:"60Gy",hl:1,fx:[["Cystitis","A","40Gy","20"],["Chronic cystitis, ulcer, contracture","L","65Gy","33"]]},
+ {site:"Prostate",fx:[["Impotence","S,L","60Gy","30"]]},
+ {site:"Vagina",fx:[["Ulcer, fistula","L","90Gy","45"]]},
+ {site:"Uterus",fx:[["Necrosis, perforation","L",">100Gy","50"]]},
+ {site:"Pituitary gland",fx:[["Hypopituitarism","L","45Gy","23"]]},
+ {site:"Thyroid gland",tol:"30Gy",fx:[["Hypothyroidism","L","45Gy","23"]]},
+ {site:"Adrenal gland",fx:[["Hypoadrenalism","L","60Gy","30"]]},
+ {site:"Testes, ovaries",tol:"3Gy",qn:"testes and ovaries",fx:[["Sterility, temporary amenorrhoea","A,S","3Gy",""],["Sterility, permanent amenorrhoea","L","15Gy",""]]},
+ {site:"Brain (including optic nerve)",tol:"50Gy",fx:[["Necrosis","L","55Gy","25"]]},
+ {site:"Brainstem",tol:"45Gy",fx:[]},
+ {site:"Spinal cord",tol:"44Gy",tn:"over a 10cm length",xq:[{q:"The 44Gy spinal cord tolerance applies over what length?",a:"10cm",opts:["5cm","10cm","15cm","20cm"],mono:1}],fx:[["L'Hermitte's syndrome","S","45Gy","23"],["Transverse myelitis","L","50Gy","25"]]},
+ {site:"Lymphatics",fx:[["Lymphoedema","L","50Gy","25"]]},
+ {site:"Breast",fx:[["Atrophy, induration","L","50Gy","25"]]},
+ {site:"Muscle",fx:[["Atrophy","L",">100Gy","50"]]},
+ {site:"Bone, cartilage",tol:"60Gy",qn:"bone and cartilage",fx:[["Necrosis, fracture","L","60Gy","30"]]},
+ {site:"Bone marrow",note:"dependent on location, site and dose",fx:[["Leukopenia, thrombocytopenia","A","",""],["Immunodeficiency","A,S","",""],["Marrow hyperplasia","L","20Gy","10"],["Leukaemia","L","",""]]},
+ {site:"Foetus",fx:[["Death","A,S","2–4.5Gy",""]]}
+];
+const CONCEPTS=[
+ {id:"c1",hl:1,front:"Define the tolerance dose.",ans:"The minimum dose that will result in a significant complication within normal tissue.",
+  q:"The tolerance dose is…",opts:["The minimum dose that will result in a significant complication within normal tissue","The maximum dose normal tissue can receive with no effects at all","The dose at which acute reactions first appear","The dose that controls 50% of tumours"]},
+ {id:"c2",front:"What delivery do all the doses on the sheet assume?",ans:"2Gy per day, 5 days a week, with moderate target volumes.",
+  q:"The doses on the sheet assume a prescription of…",opts:["2Gy/day, 5 days a week, moderate target volumes","1.8Gy/day, 5 days a week, small target volumes","2Gy/day, 7 days a week, moderate target volumes","3Gy/day, 3 days a week, large target volumes"]},
+ {id:"c3",tonly:1,front:"When do acute (A) effects occur?",ans:"During radiotherapy or within a few weeks of it.",
+  q:"Acute (A) effects occur…",opts:["During or within a few weeks of radiotherapy","2–6 months after radiotherapy","Several months to years after radiotherapy","Only after treatment has finished for a year"]},
+ {id:"c4",tonly:1,front:"When do sub-acute (S) effects occur?",ans:"2–6 months after radiotherapy.",
+  q:"Sub-acute (S) effects occur…",opts:["2–6 months after radiotherapy","During or within a few weeks of radiotherapy","Several months to years after radiotherapy","Within 24 hours of the first fraction"]},
+ {id:"c5",tonly:1,front:"When do late (L) effects occur?",ans:"Several months to years after radiotherapy.",
+  q:"Late (L) effects occur…",opts:["Several months to years after radiotherapy","2–6 months after radiotherapy","During or within a few weeks of radiotherapy","Within a week of the final fraction"]}
+];
+
+const T={A:"Acute",S:"Sub-acute",L:"Late"};
+const TL=["Acute","Sub-acute","Late","Acute and sub-acute","Sub-acute and late"];
+const tl=t=>{const p=t.split(",").map(x=>T[x]);return p.length>1?p[0]+" and "+p[1].toLowerCase():p[0]};
+const num=s=>{const m=String(s||"").match(/\d+(\.\d+)?/);return m?parseFloat(m[0]):NaN};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const lc=e=>/^L'/.test(e)?e:e[0].toLowerCase()+e.slice(1);
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+function iso(d){const g=num(d);if(isNaN(g))return"var(--line)";return g<5?"var(--iso1)":g<20?"var(--iso2)":g<35?"var(--iso3)":g<45?"var(--iso4)":g<55?"var(--iso5)":g<70?"var(--iso6)":"var(--iso7)"}
+const dot=d=>/Gy/.test(d)?`<span class="dot" style="background:${iso(d)}"></span>`:"";
+
+// storage (per-viewer convenience only)
+const store={get(k,f){try{const v=localStorage.getItem("tdt-"+k);return v==null?f:JSON.parse(v)}catch(e){return f}},set(k,v){try{localStorage.setItem("tdt-"+k,JSON.stringify(v))}catch(e){}}};
+let tab=store.get("tab","cards"), scope=store.get("scope","all");
+let known=new Set(store.get("known",[]));
+let withTiming=store.get("timing",false);
+
+// cards
+const CARDS=[];
+D.forEach((s,i)=>{
+  if(s.tol)CARDS.push({id:"t"+i,kind:"tol",hl:!!s.hl,site:s.site,front:s.site,prompt:s.qn==="lens of the eye"?"Tolerance dose of the lens?":"Tolerance dose of organ?",dose:s.tol,sub:s.tn&&s.qn!=="lens of the eye"?s.tn:""});
+  (s.xq||[]).forEach((x,k)=>CARDS.push({id:`x${i}_${k}`,kind:"tol",hl:!!s.hl,site:s.site,front:x.q,prompt:"",dose:x.a,sub:""}));
+  s.fx.forEach((f,j)=>{const[e,t,d,n,h]=f;
+    CARDS.push({id:`f${i}_${j}`,kind:"fx",hl:!!h,site:s.site,front:e,prompt:d?"Reaction dose?":"Acute, sub-acute or late?",dose:d,sub:n?`${n} fractions`:"",timing:tl(t),tonly:!d});
+  });
+});
+CONCEPTS.forEach(c=>CARDS.push({id:c.id,kind:"note",hl:!!c.hl,tonly:!!c.tonly,site:"Key definition",front:c.front,ans:c.ans}));
+const inScope=(c,sc)=>(withTiming||!c.tonly)&&(sc==="all"||(sc==="hl"&&c.hl)||(sc==="tol"&&c.kind==="tol")||(sc==="fx"&&c.kind==="fx"));
+
+let deck=[],flipped=false;
+function buildDeck(){deck=shuffle(CARDS.filter(c=>inScope(c,scope)&&!known.has(c.id)));flipped=false}
+function renderCards(){
+  const P=document.getElementById("p-cards");
+  const total=CARDS.filter(c=>inScope(c,scope)).length;
+  const k=CARDS.filter(c=>inScope(c,scope)&&known.has(c.id)).length;
+  const progress=`<div class="meta"><span>${deck.length} to go · ${k} of ${total} known</span><button class="linkbtn" id="reset">Reset progress</button></div><div class="bar"><i style="width:${total?k/total*100:0}%"></i></div>`;
+  if(!deck.length){
+    P.innerHTML=progress+`<div class="card"><span class="eyebrow">Deck complete</span><div class="qtext">You've marked all ${total} cards in this set as known.</div><p class="prompt" style="margin:0">Reset to go through them again, or switch to the quiz to test recall under pressure.</p><div class="row"><button class="btn primary" id="again-all">Go through again</button></div></div>`;
+    P.querySelector("#again-all").onclick=resetScope;P.querySelector("#reset").onclick=resetScope;return;
+  }
+  const c=deck[0];
+  const eyebrow=c.kind==="tol"?"Tolerance dose":c.kind==="fx"?`${esc(c.site)} · reaction`:"Key definition";
+  let ans="";
+  if(flipped){
+    if(c.kind==="note")ans=`<div class="answer"><div class="ansText">${esc(c.ans)}</div></div>`;
+    else{const det=c.dose?[c.sub,c.timing].filter(Boolean).join(" · "):"";
+      ans=`<div class="answer">${c.dose?`<div class="big dose">${dot(c.dose)}${esc(c.dose)}</div>`:`<div class="timing" style="font-size:1.4rem">${esc(c.timing)}</div>`}${det?`<div class="sub">${esc(det)}</div>`:""}</div>`}
+  }
+  P.innerHTML=progress+`<div class="card fc" id="fc" tabindex="0" aria-live="polite">
+    <div class="meta" style="font-size:.75rem"><span class="eyebrow">${eyebrow}</span>${c.hl?'<span class="badge">Highlighted</span>':""}</div>
+    <div class="front${c.kind==="note"||c.front.length>34?" long":""}">${esc(c.front)}</div>
+    ${!flipped&&c.prompt?`<div class="prompt">${esc(c.prompt)}</div>`:""}${ans}</div>
+    ${flipped?`<div class="row"><button class="btn bad" id="b-again">Again</button><button class="btn good" id="b-got">Got it</button></div>`:`<div class="row"><button class="btn primary" id="b-show">Show answer</button></div>`}`;
+  P.querySelector("#reset").onclick=resetScope;
+  P.querySelector("#fc").onclick=()=>{if(!flipped){flipped=true;renderCards()}};
+  if(flipped){P.querySelector("#b-again").onclick=again;P.querySelector("#b-got").onclick=got}
+  else P.querySelector("#b-show").onclick=()=>{flipped=true;renderCards()};
+}
+function again(){const c=deck.shift();deck.splice(Math.min(3,deck.length),0,c);flipped=false;renderCards()}
+function got(){known.add(deck.shift().id);store.set("known",[...known]);flipped=false;renderCards()}
+function resetScope(){CARDS.filter(c=>inScope(c,scope)).forEach(c=>known.delete(c.id));store.set("known",[...known]);buildDeck();renderCards()}
+
+// quiz
+function near(pool,a){const c=pool.filter(x=>num(x)!==num(a)).sort((x,y)=>Math.abs(num(x)-num(a))-Math.abs(num(y)-num(a))).slice(0,6);return shuffle([a,...shuffle(c).slice(0,3)])}
+function buildQs(sc){
+  const qs=[];
+  const tolPool=[...new Set(D.filter(s=>s.tol).map(s=>s.tol))];
+  const fxPool=[...new Set(D.flatMap(s=>s.fx.map(f=>f[2])).filter(Boolean))];
+  D.forEach(s=>{
+    const name=s.qn||s.site.toLowerCase();
+    if(s.tol&&(sc==="all"||sc==="tol"||(sc==="hl"&&s.hl)))
+      {const why=`${s.site}: tolerance dose ${s.tol}${s.tn?" ("+s.tn+")":""}.`;
+      qs.push({eb:"Tolerance dose",q:`Tolerance dose of the ${name}?`,a:s.tol,opts:near(tolPool,s.tol),mono:1,why});
+      (s.xq||[]).forEach(x=>qs.push({eb:"Tolerance dose · volume",q:x.q,a:x.a,opts:x.opts?shuffle(x.opts):near(tolPool,x.a),mono:x.mono,why}));}
+    s.fx.forEach(f=>{const[e,t,d,n,h]=f;
+      if(!(sc==="all"||sc==="fx"||(sc==="hl"&&h)))return;
+      const why=`${e} (${s.site.toLowerCase()}): ${d?d+(n?" in "+n+" fractions":"")+", ":""}${tl(t).toLowerCase()}.`;
+      if(d)qs.push({eb:`${s.site} · reaction dose`,q:`Reaction dose for ${lc(e)}?`,a:d,opts:near(fxPool,d),mono:1,why});
+      if(withTiming)qs.push({eb:`${s.site} · timing`,q:`${e}: acute, sub-acute or late?`,a:tl(t),opts:shuffle([tl(t),...shuffle(TL.filter(x=>x!==tl(t))).slice(0,3)]),why});
+    });
+  });
+  if(sc==="all"||sc==="tol"){
+    const withTol=D.filter(s=>s.tol);
+    withTol.forEach(s=>{
+      if(withTol.filter(o=>o.tol===s.tol).length!==1)return;
+      const others=shuffle(withTol.filter(o=>o!==s).map(o=>o.site)).slice(0,3);
+      qs.push({eb:"Tolerance dose · reverse",q:`Which site has a tolerance dose of ${s.tol}?`,a:s.site,opts:shuffle([s.site,...others]),why:`${s.site}: tolerance dose ${s.tol}${s.tn?" ("+s.tn+")":""}.`});
+    });
+  }
+  CONCEPTS.forEach(c=>{if((withTiming||!c.tonly)&&(sc==="all"||(sc==="hl"&&c.hl)))qs.push({eb:"Key definition",q:c.q,a:c.opts[0],opts:shuffle(c.opts),why:c.ans})});
+  return shuffle(qs);
+}
+let Q=null;
+function renderQuiz(){
+  const P=document.getElementById("p-quiz");
+  if(!Q){
+    const n=buildQs(scope).length;
+    P.innerHTML=`<div class="card"><span class="eyebrow">Multiple choice</span><div class="qtext">${n} questions available in this set</div><p class="prompt" style="margin:0">Questions cover tolerance doses and reaction doses${withTiming?", plus acute, sub-acute or late timing":""}. Each answer shows the full line from the table.</p>
+    <div class="row"><button class="btn primary" data-n="10">10 questions</button><button class="btn" data-n="20">20</button><button class="btn" data-n="999">All ${n}</button></div></div>`;
+    P.querySelectorAll("[data-n]").forEach(b=>b.onclick=()=>startQuiz(buildQs(scope).slice(0,+b.dataset.n)));
+    return;
+  }
+  if(Q.i>=Q.qs.length){
+    const pct=Math.round(Q.score/Q.qs.length*100);
+    P.innerHTML=`<div class="card"><span class="eyebrow">Round complete</span><div class="score">${Q.score}/${Q.qs.length}</div><div class="prompt">${pct}% correct</div>
+    ${Q.missed.length?`<div><strong>To revisit</strong><ul class="missed">${Q.missed.map(m=>`<li>${esc(m.why)}</li>`).join("")}</ul></div>`:"<div>No misses this round.</div>"}
+    <div class="row">${Q.missed.length?'<button class="btn primary" id="retry">Retry the ones I missed</button>':""}<button class="btn" id="newr">New round</button></div></div>`;
+    const r=P.querySelector("#retry");if(r)r.onclick=()=>startQuiz(shuffle(Q.missed).map(m=>({...m,opts:shuffle(m.opts)})));
+    P.querySelector("#newr").onclick=()=>{Q=null;renderQuiz()};
+    return;
+  }
+  const q=Q.qs[Q.i];
+  P.innerHTML=`<div class="meta"><span>Question ${Q.i+1} of ${Q.qs.length}</span><span>Score ${Q.score}</span></div><div class="bar"><i style="width:${Q.i/Q.qs.length*100}%"></i></div>
+  <div class="card"><span class="eyebrow">${esc(q.eb)}</span><p class="qtext">${esc(q.q)}</p>
+  <div class="opts">${q.opts.map((o,k)=>`<button class="opt${q.mono?" mono":""}" data-k="${k}">${esc(o)}</button>`).join("")}</div>
+  <div id="fb" aria-live="polite"></div></div>`;
+  P.querySelectorAll(".opt").forEach(b=>b.onclick=()=>{
+    if(Q.done)return;Q.done=true;
+    const pick=q.opts[+b.dataset.k],ok=pick===q.a;
+    if(ok)Q.score++;else Q.missed.push(q);
+    P.querySelectorAll(".opt").forEach(x=>{x.disabled=true;const v=q.opts[+x.dataset.k];if(v===q.a)x.classList.add("right");else if(x===b)x.classList.add("wrong")});
+    P.querySelector("#fb").innerHTML=`<div class="answer"><div class="fb ${ok?"ok":"no"}">${ok?"Correct":"Not quite. Answer: "+esc(q.a)}</div><div class="why">${esc(q.why)}</div><div class="row" style="margin-top:8px"><button class="btn primary" id="next">${Q.i+1<Q.qs.length?"Next question":"See results"}</button></div></div>`;
+    const nx=P.querySelector("#next");nx.onclick=()=>{Q.i++;Q.done=false;renderQuiz()};nx.focus();
+  });
+}
+function startQuiz(qs){Q={qs,i:0,score:0,missed:[],done:false};renderQuiz()}
+
+// table
+function renderTable(){
+  const term=document.getElementById("q").value.trim().toLowerCase();
+  const out=D.map(s=>{
+    const siteHit=!term||s.site.toLowerCase().includes(term);
+    const fx=s.fx.filter(f=>siteHit||f[0].toLowerCase().includes(term));
+    if(!siteHit&&!fx.length)return"";
+    const tol=s.tol?`<div class="tol"><span class="lbl">Tolerance</span><span class="dose ${s.hl?"mk":""}">${esc(s.tol)}</span>${s.tn?`<span class="tn">${esc(s.tn)}</span>`:""}</div>`:`<div class="tol"><span class="tn">No tolerance dose listed</span></div>`;
+    const list=fx.length?`<ul>${fx.map(([e,t,d,n,h])=>`<li><span class="eff"><span class="${h?"mk":""}">${esc(e)}</span></span><span class="chip">${t.replace(",",",")}</span><span class="dcell">${d?dot(d)+`<span class="dose">${esc(d)}</span>`:'<span class="fx">no dose given</span>'}${n?`<span class="fx">${n}#</span>`:""}</span></li>`).join("")}</ul>`:`<div class="none">No reaction doses listed.</div>`;
+    return `<article class="site"><header><h3>${esc(s.site)}</h3>${tol}</header>${s.note?`<div class="tn sub" style="font-size:.85rem">${esc(s.note)}</div>`:""}${list}</article>`;
+  }).join("");
+  document.getElementById("sites").innerHTML=out||'<div class="prompt">Nothing matches that search.</div>';
+}
+
+// shell
+function setTab(t){tab=t;store.set("tab",t);
+  document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t));
+  ["cards","quiz","table"].forEach(p=>document.getElementById("p-"+p).hidden=p!==t);
+  document.getElementById("controls").hidden=t==="table";
+  if(t==="table")renderTable();
+}
+function setScope(s){scope=s;store.set("scope",s);
+  document.querySelectorAll("#scopes button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.scope===s));
+  buildDeck();renderCards();Q=null;renderQuiz();
+}
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+document.querySelectorAll("#scopes button").forEach(b=>b.onclick=()=>setScope(b.dataset.scope));
+document.getElementById("q").addEventListener("input",renderTable);
+const tg=document.getElementById("timing");tg.checked=withTiming;
+tg.onchange=()=>{withTiming=tg.checked;store.set("timing",withTiming);buildDeck();renderCards();Q=null;renderQuiz()};
+document.addEventListener("keydown",e=>{
+  if(tab!=="cards"||e.target.tagName==="INPUT"||!deck.length)return;
+  if((e.key===" "||e.key==="Enter")&&!flipped&&e.target.tagName!=="BUTTON"){e.preventDefault();flipped=true;renderCards()}
+  else if(flipped&&e.key==="1")again(); else if(flipped&&e.key==="2")got();
+});
+setScope(scope);setTab(tab);renderTable();
+</script>
+</body>
+</html>
